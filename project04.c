@@ -4,6 +4,8 @@
 
 #include "armemu.h"
 
+extern bool g_verbose;
+
 void copy_array(int *dst, int *src, int len) {
     for (int i = 0; i < len; i++) {
         dst[i] = src[i];
@@ -191,7 +193,8 @@ int parse_params(int argc, char **argv, struct arm_state *asp) {
     // the name of the emulated program and its parameters
     asp->analyze = false;
     asp->verbose = false;
-    asp->cache_type = CT_NONE;
+    asp->cache_sim = false;
+    asp->cache.type = CT_NONE;
     int i;
     for (i = 1; i < argc; i++) {
         if (argv[i][0] != '-') {
@@ -201,15 +204,17 @@ int parse_params(int argc, char **argv, struct arm_state *asp) {
         } else if (!strcmp(argv[i], "-a")) {
             asp->analyze = true;
         } else if (!strcmp(argv[i], "-dm")) {
-            asp->cache_type = CT_DIRECT_MAPPED;
-            asp->cache_size = atoi(argv[i + 1]);
+            asp->cache_sim = true;
+            asp->cache.type = CT_DIRECT_MAPPED;
+            asp->cache.size = atoi(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i], "-sa")) {
-            asp->cache_type = CT_SET_ASSOCIATIVE;
-            asp->cache_size = atoi(argv[i + 1]);
+            asp->cache_sim = true;
+            asp->cache.type = CT_SET_ASSOCIATIVE;
+            asp->cache.size = atoi(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i], "-v")) {
-            asp->verbose = true;
+            g_verbose = true;
         }
     }
     return i;
@@ -249,6 +254,8 @@ int main(int argc, char **argv) {
     } else {
         usage();
     }
+
+    armemu_print(&state);
 
     return 0;
 }

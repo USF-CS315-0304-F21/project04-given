@@ -5,6 +5,43 @@
 
 #include "armemu.h"
 
+// Analysis functions
+
+void analysis_init(struct analysis_st *ap) {
+    ap->i_count = 0;
+    ap->dp_count = 0;
+    ap->mem_count = 0;
+    ap->b_count = 0;
+    ap->b_taken = 0;
+    ap->b_not_taken = 0;
+}
+
+// Project04: Print results of dynamic analysis
+void analysis_print(struct analysis_st *ap) {
+    printf("=== Analysis\n");
+    printf("I_count       = %d\n", ap->i_count);
+    printf("DP_count      = %d (%.2f%%)\n", ap->dp_count,
+           ((double) ap->dp_count / (double) ap->i_count) * 100.0);
+    printf("SDT_count     = %d (%.2f%%)\n", ap->mem_count,
+           ((double) ap->mem_count / (double) ap->i_count) * 100.0);    
+    printf("B_count       = %d (%.2f%%)\n", ap->b_count,
+           ((double) ap->b_count / (double) ap->i_count) * 100.0);
+    printf("B_taken       = %d (%.2f%%)\n", ap->b_taken,
+               ((double) ap->b_taken / (double) ap->b_count) * 100.0);
+    printf("B_not_taken   = %d (%.2f%%)\n", ap->b_not_taken,
+               ((double) ap->b_not_taken / (double) ap->b_count) * 100.0);
+}
+
+// Project04: Print results of dynamic analysis and cache sim
+void armemu_print(struct arm_state *asp) {
+    if (asp->analyze) {
+        analysis_print(&(asp->analysis));
+    }
+    if (asp->cache_sim) {
+        cache_print((&asp->cache));
+    }
+}
+
 void armemu_init(struct arm_state *asp, uint32_t *func,
                  uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3) {
     int i;
@@ -36,6 +73,12 @@ void armemu_init(struct arm_state *asp, uint32_t *func,
     asp->regs[1] = a1;
     asp->regs[2] = a2;
     asp->regs[3] = a3;
+
+    // Project04: Initialize dynamic analysis
+    analysis_init(&asp->analysis);
+    
+    // Project04: Initialize cache simulator
+    cache_init(&asp->cache);
 }
 
 
@@ -50,6 +93,10 @@ bool armemu_is_bx(uint32_t iw) {
 
 void armemu_bx(struct arm_state *asp, uint32_t iw) {
     uint32_t rn = iw & 0b1111;
+
+    // Project04: increment dynamic analysis
+    asp->analysis.b_count += 1;
+    asp->analysis.b_taken += 1;    
 
     asp->regs[PC] = asp->regs[rn];
 }
@@ -68,6 +115,9 @@ void armemu_add(struct arm_state *asp, uint32_t iw) {
     uint32_t rm = iw & 0b1111;
     uint32_t imm = iw & 0b11111111;
     uint32_t oper2;
+
+    // Project04: Increment analysis count
+    asp->analysis.dp_count += 1;
     
     if (!i_bit) {
         oper2 = asp->regs[rm];
@@ -85,13 +135,13 @@ void armemu_add(struct arm_state *asp, uint32_t iw) {
 
 void armemu_one(struct arm_state *asp) {
 
-    /*
-    uint32_t *pc;
-    pc = (uint32_t *) asp->regs[PC];
-    iw = *pc;
+    asp->analysis.i_count += 1;
+
+    /* Project04: get instruction word from instruction cache
+       instead of the PC pointer directly
+       uint32_t iw = *((uint32_t *) asp->regs[PC]);
     */
-    
-    uint32_t iw = *((uint32_t *) asp->regs[PC]);
+    uint32_t iw = cache_lookup(&asp->cache, asp->regs[PC]);
 
     // Order matters: more constrained to least constrained
     if (armemu_is_bx(iw)) {

@@ -1,5 +1,5 @@
 PROG = project04
-OBJS = project04.o armemu.o\
+OBJS = project04.o armemu.o cache.o verbose.o\
 	   fib_rec_c.o fib_rec_s.o\
 	   find_max_index_c.o find_max_index_s.o\
        get_bitseq_c.o get_bitseq_s.o\
